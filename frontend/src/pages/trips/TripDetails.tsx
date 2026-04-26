@@ -1,11 +1,64 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Alert, Spinner, Badge, Modal, ListGroup } from 'react-bootstrap';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaCar, FaMapMarkerAlt, FaCalendarAlt, FaMoneyBill, FaUser, FaPhone, FaEnvelope, FaStar, FaPaw, FaSmoking, FaMusic, FaUsers, FaInfoCircle, FaEdit, FaTrash, FaArrowLeft, FaClock, FaCheckCircle } from 'react-icons/fa';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import { FaCar, FaMapMarkerAlt, FaChartLine, FaCalendarAlt, FaMoneyBill, FaUser, FaPhone, FaEnvelope, FaStar, FaPaw, FaSmoking, FaMusic, FaUsers, FaInfoCircle, FaEdit, FaTrash, FaArrowLeft, FaClock, FaCheckCircle } from 'react-icons/fa';
 import { tripService } from '../../services/tripService';
 import type { Trip } from '../../types/trip.types';
 import { authService } from '../../services/authService';
 import Sidebar from '../../components/Sidebar';
+
+// Fix for default marker icons in Leaflet
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+});
+
+// Component to fit bounds to show the entire route
+const FitBounds: React.FC<{ positions: [number, number][] }> = ({ positions }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (positions.length > 0) {
+      const bounds = L.latLngBounds(positions);
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+  }, [map, positions]);
+  return null;
+};
+
+// Geocoding service to convert address to coordinates
+const geocodeAddress = async (address: string): Promise<[number, number] | null> => {
+  try {
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
+    const data = await response.json();
+    if (data && data.length > 0) {
+      return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+    }
+    return null;
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    return null;
+  }
+};
+
+// Get route between two points using OSRM
+const getRoute = async (start: [number, number], end: [number, number]): Promise<[number, number][]> => {
+  try {
+    const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson`);
+    const data = await response.json();
+    if (data.routes && data.routes.length > 0) {
+      const coordinates = data.routes[0].geometry.coordinates;
+      return coordinates.map((coord: [number, number]) => [coord[1], coord[0]]);
+    }
+    return [start, end];
+  } catch (error) {
+    console.error('Route error:', error);
+    return [start, end];
+  }
+};
 
 const TripDetails: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
@@ -19,6 +72,10 @@ const TripDetails: React.FC = () => {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [showStats, setShowStats] = useState(false);
+  const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
+  const [departureCoords, setDepartureCoords] = useState<[number, number] | null>(null);
+  const [destinationCoords, setDestinationCoords] = useState<[number, number] | null>(null);
+  const [mapLoading, setMapLoading] = useState(false);
 
   const currentUserId = localStorage.getItem('userId');
   const isCreator = trip?.creator._id === currentUserId;
@@ -28,6 +85,12 @@ const TripDetails: React.FC = () => {
   useEffect(() => {
     fetchTripDetails();
   }, [tripId]);
+
+  useEffect(() => {
+    if (trip) {
+      fetchRoute();
+    }
+  }, [trip]);
 
   const fetchTripDetails = async () => {
     if (!tripId) return;
@@ -47,6 +110,29 @@ const TripDetails: React.FC = () => {
       setError('Failed to load trip details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRoute = async () => {
+    if (!trip) return;
+    setMapLoading(true);
+    try {
+      // Geocode departure and destination
+      const depCoords = await geocodeAddress(trip.departure);
+      const destCoords = await geocodeAddress(trip.destination);
+      
+      if (depCoords && destCoords) {
+        setDepartureCoords(depCoords);
+        setDestinationCoords(destCoords);
+        
+        // Get the route
+        const route = await getRoute(depCoords, destCoords);
+        setRouteCoordinates(route);
+      }
+    } catch (error) {
+      console.error('Error fetching route:', error);
+    } finally {
+      setMapLoading(false);
     }
   };
 
@@ -178,6 +264,64 @@ const TripDetails: React.FC = () => {
 
           <Row>
             <Col lg={8}>
+              {/* Map Card */}
+              <Card className="shadow-sm border-0 mb-4" style={{ borderRadius: '20px', overflow: 'hidden' }}>
+                <Card.Header className="bg-danger text-white" style={{ borderRadius: '0' }}>
+                  <h5 className="mb-0 fw-bold">🗺️ Route Map</h5>
+                </Card.Header>
+                <Card.Body className="p-0">
+                  {mapLoading ? (
+                    <div className="d-flex justify-content-center align-items-center" style={{ height: '400px' }}>
+                      <Spinner animation="border" variant="danger" />
+                      <span className="ms-3">Loading map...</span>
+                    </div>
+                  ) : departureCoords && destinationCoords ? (
+                    <MapContainer
+                      center={[(departureCoords[0] + destinationCoords[0]) / 2, (departureCoords[1] + destinationCoords[1]) / 2]}
+                      zoom={13}
+                      style={{ height: '400px', width: '100%' }}
+                      zoomControl={true}
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      {/* Departure Marker */}
+                      <Marker position={departureCoords}>
+                        <Popup>
+                          <strong>Departure</strong><br />
+                          {trip.departure}<br />
+                          <small>{new Date(trip.departureTime).toLocaleString()}</small>
+                        </Popup>
+                      </Marker>
+                      {/* Destination Marker */}
+                      <Marker position={destinationCoords}>
+                        <Popup>
+                          <strong>Destination</strong><br />
+                          {trip.destination}
+                        </Popup>
+                      </Marker>
+                      {/* Route Polyline */}
+                      {routeCoordinates.length > 0 && (
+                        <Polyline
+                          positions={routeCoordinates}
+                          color="#dc3545"
+                          weight={4}
+                          opacity={0.8}
+                          dashArray="10, 10"
+                        />
+                      )}
+                      <FitBounds positions={[departureCoords, destinationCoords]} />
+                    </MapContainer>
+                  ) : (
+                    <div className="text-center py-5" style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                      <FaMapMarkerAlt size={50} className="text-muted mb-3" />
+                      <p>Map unavailable. Please check the addresses.</p>
+                    </div>
+                  )}
+                </Card.Body>
+              </Card>
+
               {/* Main Trip Info Card */}
               <Card className="shadow-sm border-0 mb-4" style={{ borderRadius: '20px' }}>
                 <Card.Body className="p-4">

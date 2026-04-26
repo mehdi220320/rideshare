@@ -3,14 +3,12 @@ const bcryptjs = require('bcryptjs');
 
 const tripSchema = new mongoose.Schema(
   {
-    // Trip creator (driver)
     creator: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
     },
 
-    // Trip details
     departure: {
       type: String,
       required: true,
@@ -28,7 +26,6 @@ const tripSchema = new mongoose.Schema(
       required: true,
     },
 
-    // Vehicle information
     carType: {
       type: String,
       enum: ['compact', 'sedan', 'suv', 'van', 'truck'],
@@ -45,7 +42,6 @@ const tripSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // Capacity and pricing
     totalSeats: {
       type: Number,
       required: true,
@@ -65,7 +61,6 @@ const tripSchema = new mongoose.Schema(
       min: 0,
     },
 
-    // Passengers who booked
     passengers: [
       {
         userId: {
@@ -90,14 +85,12 @@ const tripSchema = new mongoose.Schema(
       },
     ],
 
-    // Trip status
     status: {
       type: String,
       enum: ['upcoming', 'in-progress', 'completed', 'cancelled'],
       default: 'upcoming',
     },
 
-    // Additional details
     description: {
       type: String,
       trim: true,
@@ -118,7 +111,6 @@ const tripSchema = new mongoose.Schema(
       default: true,
     },
 
-    // Route waypoints (optional)
     waypoints: [
       {
         location: String,
@@ -130,12 +122,10 @@ const tripSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Virtual to get total booked seats
 tripSchema.virtual('totalBookedSeats').get(function () {
   return this.passengers.reduce((sum, passenger) => sum + passenger.seatsBooked, 0);
 });
 
-// Ensure virtuals are serialized
 tripSchema.set('toJSON', { virtuals: true });
 
 module.exports = mongoose.model('Trip', tripSchema);
