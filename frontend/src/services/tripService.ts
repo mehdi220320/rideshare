@@ -44,6 +44,10 @@ export interface TripFilters {
 }
 
 export const tripService = {
+   async getAllTrips() {
+    const response = await api.get('/trips/all');
+    return response.data;
+  },
   // Create a new trip
   async createTrip(data: CreateTripData) {
     const response = await api.post('/trips/create', data);

@@ -3,7 +3,7 @@ const  User=require('./User');
 const mongoose = require('mongoose');
 
 const router=express.Router();
-const { adminAuthorization,checkTokenExists } = require('../middlewares/authMiddleware');
+const { adminAuthorization,authentication,checkTokenExists } = require('../middlewares/authMiddleware');
 
 
 router.get('/all',[adminAuthorization,checkTokenExists],async (req,res)=>{
@@ -14,6 +14,7 @@ router.get('/all',[adminAuthorization,checkTokenExists],async (req,res)=>{
         res.send(e)
     }
 })
+
 router.get('/admins',[adminAuthorization,checkTokenExists],async (req,res)=>{
     try {
         const  users = await User.find({role:'admin'})
@@ -30,7 +31,18 @@ router.get('/numberOfUsers',[adminAuthorization,checkTokenExists],async (req,res
         res.send(e)
     }
 })
-
+router.get('/userbyId/:userId', authentication, async (req, res) => {
+    try {
+        const user = await User.findById(req.params.userId).select('-password');
+        if (!user) {
+            return res.status(404).send({ message: 'User not found' });
+        }
+        res.status(200).send({ user });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: 'Error fetching user' });
+    }
+});
 router.get('/:email',checkTokenExists,async (req,res)=>{
     try {
         const  user = await User.findOne({email:req.params.email})

@@ -23,6 +23,7 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^6.10.1",
     "path": "^0.12.7",
+    "socket.io": "^4.8.3",
     "whatwg-url": "^14.2.0"
   }
 }

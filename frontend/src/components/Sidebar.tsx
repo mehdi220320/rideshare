@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Nav, Button } from 'react-bootstrap';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
-  FaCar, FaPlus, FaSearch, FaBookmark, FaCalendarAlt, 
+  FaCar, FaPlus, FaSearch, FaBookmark, FaCalendarAlt, FaComment ,
   FaSignOutAlt, FaTachometerAlt, FaUsers, FaUser, 
   FaBars, FaChevronLeft, FaChevronRight
 } from 'react-icons/fa';
@@ -29,6 +29,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     { path: '/admin/users', icon: <FaUsers />, label: 'Manage Users' },
   ] : [
     { path: '/dashboard', icon: <FaTachometerAlt />, label: 'Dashboard' },
+    { path: '/messages', icon: <FaComment />, label: 'Messages' },
     { path: '/trips/browse', icon: <FaSearch />, label: 'Browse Trips' },
     { path: '/trips/create', icon: <FaPlus />, label: 'Create Trip' },
     { path: '/trips/my-trips', icon: <FaCar />, label: 'My Trips' },

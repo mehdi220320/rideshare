@@ -3,7 +3,7 @@ import { Container, Row, Col, Card, Button, Alert, Spinner, Badge, Modal, ListGr
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { FaCar, FaMapMarkerAlt, FaChartLine, FaCalendarAlt, FaMoneyBill, FaUser, FaPhone, FaEnvelope, FaStar, FaPaw, FaSmoking, FaMusic, FaUsers, FaInfoCircle, FaEdit, FaTrash, FaArrowLeft, FaClock, FaCheckCircle } from 'react-icons/fa';
+import { FaCar, FaMapMarkerAlt, FaChartLine, FaCalendarAlt, FaMoneyBill, FaUser, FaPhone, FaEnvelope, FaStar, FaPaw, FaSmoking, FaMusic, FaUsers, FaInfoCircle, FaEdit, FaTrash, FaArrowLeft, FaClock, FaCheckCircle, FaComment } from 'react-icons/fa';
 import { tripService } from '../../services/tripService';
 import type { Trip } from '../../types/trip.types';
 import { authService } from '../../services/authService';
@@ -175,6 +175,10 @@ const TripDetails: React.FC = () => {
         alert(err.response?.data?.message || 'Failed to delete trip');
       }
     }
+  };
+
+  const handleMessageDriver = () => {
+    navigate(`/messages/${trip?.creator._id}`);
   };
 
   const getPassengerBooking = () => {
@@ -507,6 +511,19 @@ const TripDetails: React.FC = () => {
                       <span>{trip.creator.email}</span>
                     </div>
                   </div>
+                  
+                  {/* Message Driver Button - Only show if current user is not the driver */}
+                  {currentUserId !== trip.creator._id && (
+                    <Button
+                      variant="outline-danger"
+                      className="w-100 mt-4"
+                      onClick={handleMessageDriver}
+                      style={{ borderRadius: '10px', fontWeight: '500' }}
+                    >
+                      <FaComment className="me-2" />
+                      Message Driver
+                    </Button>
+                  )}
                 </Card.Body>
               </Card>
             </Col>

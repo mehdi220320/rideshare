@@ -5,6 +5,25 @@ const Trip = require('./Trip');
 const User = require('../user/User');
 const { adminAuthorization, checkTokenExists, authentication } = require('../middlewares/authMiddleware');
 
+//================ALL TRIPS===============
+router.get('/all', adminAuthorization, async (req, res) => {
+  try {
+    
+    const trips = await Trip.find()
+      .populate('passengers.userId', 'firstname lastname email phone profileImage')
+      .sort({ departureTime: -1 });
+
+    res.json({
+      message: 'ALL trips retrieved successfully',
+      count: trips.length,
+      trips,
+    });
+  } catch (error) {
+    console.error('Get my trips error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // ============= CREATE TRIP =============
 // Create a new trip (driver only)
 router.post('/create', authentication, async (req, res) => {
