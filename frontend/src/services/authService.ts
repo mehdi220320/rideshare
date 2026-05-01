@@ -1,5 +1,7 @@
+// services/authService.ts
 import axios from 'axios';
 import type { LoginRequest, RegisterRequest, AuthResponse } from '../types/auth.types';
+import { socketService } from './socketService';
 
 const API_URL = 'http://localhost:5000';
 
@@ -30,24 +32,24 @@ api.interceptors.response.use(
 );
 
 export const authService = {
-    async login(data: LoginRequest): Promise<AuthResponse> {
+  async login(data: LoginRequest): Promise<AuthResponse> {
     const response = await api.post('/auth/login', data);
     if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('userRole', response.data.role);
-        localStorage.setItem('tokenExpiry', Date.now() + response.data.expiresIn * 1000);
-        localStorage.setItem('userEmail', data.email);
-        
-        // Decode token to get userId (optional - you can also get it from response)
-        try {
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('userRole', response.data.role);
+      localStorage.setItem('tokenExpiry', Date.now() + response.data.expiresIn * 1000);
+      localStorage.setItem('userEmail', data.email);
+      
+      // Decode token to get userId
+      try {
         const decoded = JSON.parse(atob(response.data.token.split('.')[1]));
         localStorage.setItem('userId', decoded.userId);
-        } catch (e) {
+      } catch (e) {
         console.error('Failed to decode token');
-        }
+      }
     }
     return response.data;
-    },
+  },
 
   async register(data: RegisterRequest): Promise<AuthResponse> {
     const response = await api.post('/auth/register', data);
@@ -55,10 +57,22 @@ export const authService = {
   },
 
   logout(): void {
+    console.log('🔐 Logging out user...');
+    
+    // Disconnect WebSocket first
+    if (socketService.isConnected()) {
+      console.log('📡 Disconnecting WebSocket...');
+      socketService.disconnect();
+    }
+    
+    // Clear all stored data
     localStorage.removeItem('token');
     localStorage.removeItem('userRole');
     localStorage.removeItem('tokenExpiry');
     localStorage.removeItem('userEmail');
+    localStorage.removeItem('userId');
+    
+    console.log('✅ User logged out successfully');
   },
 
   getToken(): string | null {
@@ -71,6 +85,10 @@ export const authService = {
 
   getUserEmail(): string | null {
     return localStorage.getItem('userEmail');
+  },
+
+  getUserId(): string | null {
+    return localStorage.getItem('userId');
   },
 
   isAuthenticated(): boolean {

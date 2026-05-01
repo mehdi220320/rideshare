@@ -18,35 +18,77 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Error handling interceptor
+api.interceptors.response.use(
+  response => response,
+  error => {
+    console.error('API Error:', error.response?.data || error.message);
+    throw error;
+  }
+);
+
 export const messageService = {
   async getConversations() {
-    const response = await api.get('/messages/conversations');
-    return response.data;
+    try {
+      const response = await api.get('/messages/conversations');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      throw error;
+    }
   },
 
-  // New method to get or create conversation with a user
+  // Get or create conversation with a user
   async getOrCreateConversation(userId: string) {
-    const response = await api.get(`/messages/conversation/${userId}`);
-    return response.data;
+    try {
+      const response = await api.get(`/messages/conversation/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting/creating conversation:', error);
+      throw error;
+    }
   },
 
   async getMessages(userId: string) {
-    const response = await api.get(`/messages/${userId}`);
-    return response.data;
+    try {
+      const response = await api.get(`/messages/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      throw error;
+    }
   },
 
   async sendMessage(receiverId: string, message: string) {
-    const response = await api.post('/messages/send', { receiverId, message });
-    return response.data;
+    try {
+      const response = await api.post('/messages/send', { 
+        receiverId, 
+        message 
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error sending message:', error);
+      throw error;
+    }
   },
 
   async deleteMessage(messageId: string) {
-    const response = await api.delete(`/messages/${messageId}`);
-    return response.data;
+    try {
+      const response = await api.delete(`/messages/${messageId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      throw error;
+    }
   },
 
   async getUnreadCount() {
-    const response = await api.get('/messages/unread/count');
-    return response.data;
+    try {
+      const response = await api.get('/messages/unread/count');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+      throw error;
+    }
   }
 };
